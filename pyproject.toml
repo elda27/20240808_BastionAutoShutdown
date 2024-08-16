@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "20240808-bastionautoshutdown"
+version = "0.1.0"
+description = ""
+authors = ["elda27 <kaz.birdstick@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+azure-functions = "^1.20.0"
+azure-cosmos = "^4.7.0"
+azure-mgmt-resource = "^23.1.1"
+azure-identity = "^1.17.1"
+pydantic = "^2.8.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
