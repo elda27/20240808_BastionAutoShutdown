@@ -1,0 +1,123 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "actions": {
+      "Condition": {
+        "actions": {
+          "ドキュメントを削除_(V2)": {
+            "inputs": {
+              "host": {
+                "connection": {
+                  "name": "@parameters('$connections')['documentdb']['connectionId']"
+                }
+              },
+              "method": "delete",
+              "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('BastionManagement')}/colls/@{encodeURIComponent('Entries')}/docs/@{encodeURIComponent(triggerBody()?['ICalUId'])}"
+            },
+            "type": "ApiConnection"
+          }
+        },
+        "else": {
+          "actions": {
+            "ドキュメントを作成または更新_(V3)": {
+              "inputs": {
+                "body": {
+                  "End": "@{triggerBody()?['End']}",
+                  "Start": "@{triggerBody()?['Start']}",
+                  "Title": "@{triggerBody()?['Subject']}",
+                  "id": "@{triggerBody()?['ICalUId']}"
+                },
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['documentdb']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('BastionManagement')}/colls/@{encodeURIComponent('Entries')}/docs"
+              },
+              "type": "ApiConnection"
+            }
+          }
+        },
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@triggerBody()?['ActionType']",
+                "deleted"
+              ]
+            }
+          ]
+        },
+        "runAfter": {},
+        "type": "If"
+      }
+    },
+    "contentVersion": "1.0.0.0",
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "defaultValue": {},
+        "type": "Object"
+      }
+    },
+    "triggers": {
+      "イベントが追加、更新、削除されたとき_(V2)": {
+        "inputs": {
+          "fetch": {
+            "method": "get",
+            "pathTemplate": {
+              "parameters": {
+                "table": "@{encodeURIComponent(encodeURIComponent('AQMkADAwATMwMAItYjgzNi1iZTAyLTAwAi0wMAoARgAAA2LKnUObhC1Igycz1ZJ6azEHAHqvuZ4U5FhEoU7ty13i5j0AAAIBBgAAAHqvuZ4U5FhEoU7ty13i5j0AB2PM97sAAAA='))}"
+              },
+              "template": "/datasets/calendars/v2/tables/{table}/onchangeditems"
+            },
+            "queries": {
+              "incomingDays": 300,
+              "pastDays": 50
+            }
+          },
+          "host": {
+            "connection": {
+              "name": "@parameters('$connections')['outlook']['connectionId']"
+            }
+          },
+          "subscribe": {
+            "body": {
+              "NotificationUrl": "@{listCallbackUrl()}"
+            },
+            "method": "post",
+            "pathTemplate": {
+              "parameters": {
+                "table": "@{encodeURIComponent(encodeURIComponent('AQMkADAwATMwMAItYjgzNi1iZTAyLTAwAi0wMAoARgAAA2LKnUObhC1Igycz1ZJ6azEHAHqvuZ4U5FhEoU7ty13i5j0AAAIBBgAAAHqvuZ4U5FhEoU7ty13i5j0AB2PM97sAAAA='))}"
+              },
+              "template": "/{table}/EventSubscriptionPoke/$subscriptions"
+            },
+            "queries": {
+              "incomingDays": 300,
+              "pastDays": 50
+            }
+          }
+        },
+        "splitOn": "@triggerBody()?['value']",
+        "type": "ApiConnectionNotification"
+      }
+    }
+  },
+  "parameters": {
+    "$connections": {
+      "value": {
+        "documentdb": {
+          "connectionId": "/subscriptions/{{subscription_id}}/resourceGroups/{{resource_group}}/providers/Microsoft.Web/connections/documentdb",
+          "connectionName": "documentdb",
+          "id": "/subscriptions/{{subscription_id}}/providers/Microsoft.Web/locations/japaneast/managedApis/documentdb"
+        },
+        "outlook": {
+          "connectionId": "/subscriptions/{{subscription_id}}/resourceGroups/{{resource_group}}/providers/Microsoft.Web/connections/outlook",
+          "connectionName": "outlook",
+          "id": "/subscriptions/{{subscription_id}}/providers/Microsoft.Web/locations/japaneast/managedApis/outlook"
+        }
+      }
+    }
+  }
+}
