@@ -1,0 +1,7 @@
+encryptionsalt: v1:n9kz4o3b4UU=:v1:AP5NpySUXN/CYbVM:3xBeDHfZqlpkA5Mriy8NW15YZN+kDA==
+config:
+  azure-native:location: WestUS2
+  bastion-auto-shutdown-app:PULUMI_PASSWORD:
+    secure: v1:bjJ660pRND1y/eBQ:Q7thCJDodNqJs/QNS+3t7TqnIz4c4dHE
+  bastion-auto-shutdown-app:org: swallow
+  bastion_management:org: swallow
