@@ -1,10 +1,12 @@
 import json
 import os
+import subprocess
+from contextlib import contextmanager
 from datetime import datetime
 from logging import getLogger
+from pathlib import Path
 from typing import TypedDict
 
-import azure.cosmos as cosmos
 import azure.functions as func
 from azure.cosmos import CosmosClient
 from azure.identity import DefaultAzureCredential
@@ -20,37 +22,63 @@ TARGET_RESOURCE_ARM_TEMPLATE = os.getenv("TARGET_RESOURCE_ARM_TEMPLATE", "")
 TARGET_COSMOSDB_ACCOUNT = os.getenv("TARGET_COSMOSDB_ACCOUNT", "")
 TARGET_COSMOSDB_DATABASE = os.getenv("TARGET_COSMOSDB_DATABASE", "BastionManagement")
 TARGET_COSMOSDB_CONTAINER = os.getenv("TARGET_COSMOSDB_CONTAINER", "Entries")
+TARGET_ARNS = os.getenv("TARGET_ARNS", "").split(";")
+
 credential = DefaultAzureCredential()
 
 client = CosmosClient(TARGET_COSMOSDB_ACCOUNT, credential)
 database = client.get_database_client(TARGET_COSMOSDB_DATABASE)
 container = database.get_container_client(TARGET_COSMOSDB_CONTAINER)
 
+CURRENT_DIR = Path(__file__).parent
+PULUMI_DIR = CURRENT_DIR / "pulumi"
+
+
+@contextmanager
+def context_path(paths: list[str]):
+    """Context manager for changing the current working directory."""
+    try:
+        path = os.environ.get("PATH", "")
+        if os.name == "nt":
+            pathsep = ";"
+        else:
+            pathsep = ":"
+        os.environ["PATH"] = pathsep.join([path] + paths)
+    finally:
+        os.environ["PATH"] = path
+
 
 class Record(TypedDict):
     id: str
-    Title: str
-    Start: str
-    End: str
+    title: str
+    start: str
+    end: str
 
 
-@app.route(route="handle")
-def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
+@app.cosmos_db_trigger(
+    arg_name="azcosmosdb",
+    container_name="BastionManagement",
+    database_name="Entries",
+    connection="DOCUMENTDB",
+)
+def http_trigger(azcosmosdb: func.DocumentList) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a request.")
     logger.info(f"TARGET_SUBSCRIPTION_ID: {TARGET_SUBSCRIPTION_ID}")
     logger.info(f"TARGET_RESOURCE_GROUP: {TARGET_RESOURCE_GROUP}")
     logger.info(f"TARGET_RESOURCE_NAME: {TARGET_RESOURCE_NAME}")
     logger.info(f"TARGET_RESOURCE_ARM_TEMPLATE: {TARGET_RESOURCE_ARM_TEMPLATE}")
-
-    records = read_data_from_cosmos()
+    records = azcosmosdb.data
+    # records = read_data_from_cosmos()
     now = datetime.now()
     flag_create_resource = False
+    flag_delete_resource = False
     # Check if the resource should be created
     for record in records:
-        if datetime.fromisoformat(record["Start"]) >= now:
+        if datetime.fromisoformat(record["start"]) >= now:
             flag_create_resource = True
-        if datetime.fromisoformat(record["End"]) >= now:
-            container.delete_item(record["id"], record["Title"])
+        if datetime.fromisoformat(record["end"]) >= now:
+            container.delete_item(record["id"], record["title"])
+            flag_delete_resource = True
 
     if flag_create_resource:
         # Create resource if not available
@@ -58,10 +86,14 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
             message = "Resource already exists"
         else:
             message = "Resource does not exist"
-            create_resource()
+            create_resources()
+    elif flag_delete_resource:
+        message = "Resource deleted"
+        delete_resources()
     else:
-        message = "Resource not created"
+        message = "No action required"
 
+    logger.info(f"Execution: {message}")
     return func.HttpResponse(
         json.dumps(
             {
@@ -82,12 +114,29 @@ def read_data_from_cosmos() -> list[Record]:
     return items  # type: ignore
 
 
-def create_resource():
+def format_arns(arns: list[str]) -> str:
+    """Format arns"""
+    return " ".join([f"--target {arn}" for arn in arns])
+
+
+def create_resources():
     """Create resources using azure api"""
-    resource_client = ResourceManagementClient(credential, TARGET_SUBSCRIPTION_ID)
-    resource_client.resources.create_or_update(
-        TARGET_RESOURCE_GROUP, TARGET_RESOURCE_NAME, TARGET_RESOURCE_ARM_TEMPLATE
-    )
+    target_arn_opts = format_arns(TARGET_ARNS)
+    with context_path("/mnt/pulumi"):
+        subprocess.check_call("pulumi login", cwd=str(PULUMI_DIR), shell=True)
+        subprocess.check_call(
+            f"pulumi up -y {target_arn_opts}", cwd=str(PULUMI_DIR), shell=True
+        )
+
+
+def delete_resources():
+    """Delete resources using azure api"""
+    target_arn_opts = format_arns(TARGET_ARNS)
+    with context_path("/mnt/pulumi"):
+        subprocess.check_call("pulumi login", cwd=str(PULUMI_DIR), shell=True)
+        subprocess.check_call(
+            f"pulumi destroy -y {target_arn_opts}", cwd=str(PULUMI_DIR), shell=True
+        )
 
 
 def has_target_resource() -> bool:
