@@ -1,0 +1,24 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool]
+[tool.poetry]
+# package-mode = false
+name = "azure_infra"
+version = "0.1.0"
+description = "Azure infrastructure as code"
+authors = ["elda27 <kaz.birdstick@gmail.com>"]
+license = "Apache2.0"
+readme = "README.md"
+keywords = []
+classifiers = []
+
+[tool.poetry.dependencies]
+pulumi = ">=3.0.0,<4.0.0"
+python = "^3.8"
+pulumi-azure-native = "^2.53.0"
+jinja2 = "^3.1.4"
+
+[tool.poetry.group.dev.dependencies]
+debugpy = "^1.8.5"

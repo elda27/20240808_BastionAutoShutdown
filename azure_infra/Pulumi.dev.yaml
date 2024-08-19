@@ -1,0 +1,4 @@
+encryptionsalt: v1:tdej7HJNPHQ=:v1:ZwTiwvjpwMkZiaf1:TmFt+HxESH9HT0BNn9DeKycGCpNhxg==
+config:
+  bastion-auto-shutdown:PULUMI_PASSWORD:
+    secure: v1:tWf+jCbgAHg3YsNu:gvvEEnL2+IJP5C1dJmQu0A5Btva2zxe+
