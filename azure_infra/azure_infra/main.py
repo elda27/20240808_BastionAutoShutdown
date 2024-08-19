@@ -35,4 +35,4 @@ def main():
     )
     pulumi.export(names.EXPORT_RG_BASTION_ID, rg.id)
     bastion_host = bastion.apply(rg_bastion, networks["bastion"], tags)
-    common_resources = common.apply(rg, networks["bastion"], tags)
+    common_resources = common.apply(rg, networks["common_vm"], tags)

@@ -1,4 +1,5 @@
 import pulumi
+import pulumi_azure_native as azure_native
 from pulumi_azure_native.network import (
     BastionHost,
     BastionHostSkuName,
@@ -17,6 +18,10 @@ def apply(rg: ResourceGroup, subnet: Subnet, tags: dict[str, str]) -> BastionHos
         location=rg.location,
         public_ip_allocation_method="Static",
         public_ip_address_version="IPv4",
+        sku={
+            "name": azure_native.network.PublicIPAddressSkuName.STANDARD,
+            "tier": azure_native.network.PublicIPAddressSkuTier.REGIONAL,
+        },
         tags=tags,
         public_ip_address_name=names.BASTION_IP_NAME,
     )
@@ -31,6 +36,9 @@ def apply(rg: ResourceGroup, subnet: Subnet, tags: dict[str, str]) -> BastionHos
                 "subnet": {"id": subnet.id},
             }
         ],
+        enable_ip_connect=True,
+        enable_kerberos=True,
+        enable_tunneling=True,
         sku={"name": BastionHostSkuName.STANDARD},
         tags=tags,
         bastion_host_name=names.BASTION_RESOURCE_NAME,
